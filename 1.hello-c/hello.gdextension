@@ -1,0 +1,8 @@
+[configuration]
+entry_symbol = "hello_extension_entry"
+
+[libraries]
+linux.x86_64 = "libhello-gdextension.so"
+windows.x86_64 = "hello-gdextension.dll"
+macos = "libhello-gdextension.dylib"
+

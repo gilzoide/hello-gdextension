@@ -1,2 +1,18 @@
 # Godot 4+ specific ignores
 .godot/
+
+# clangd cache
+.cache/
+# Build files
+*.o
+*.obj
+*.os
+*.a
+*.so
+*.lib
+*.dll
+*.framework
+*.dylib
+
+# Scons stuff
+.scons*
