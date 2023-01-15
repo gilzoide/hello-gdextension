@@ -106,7 +106,7 @@ Let's define our own `hello.gdextension` file:
 
 ```ini
 [configuration]
-entry_symbol = hello_extension_entry
+entry_symbol = "hello_extension_entry"
 
 [libraries]
 linux.x86_64 = "libhello-gdextensions.so"
