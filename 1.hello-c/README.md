@@ -52,12 +52,12 @@ This entry point must follow the `GDExtensionInitializationFunction` prototype, 
 
 // 2. Define the function with prototype matching GDExtensionInitializationFunction
 GDExtensionBool hello_extension_entry(
-   const GDExtensionInterface *interface,
-   GDExtensionClassLibraryPtr library,
-   GDExtensionInitialization *initialization
+    const GDExtensionInterface *p_interface,
+    GDExtensionClassLibraryPtr p_library,
+    GDExtensionInitialization *r_initialization
 ) {
-   // returning 0 means error, returning non-zero means success
-   return 1;
+    // returning 0 means error, returning non-zero means success
+    return 1;
 }
 ```
 
@@ -153,4 +153,113 @@ Current directory:
 
 
 ## GDExtension life cycle
+While Godot is initializing, it also initializes all GDExtensions by calling the `initialize` function in the `GDExtensionInitialization` pointer that was passed to our entry point.
+While quitting, Godot deinitializes all extensions by calling the `deinitialize` function.
+
+As extension developers, we are responsible for implementing both functions and setting them up in the initialization structure.
+Open up `hello-gdextension.c` and create both functions.
+To help us understanding that our library is running, let's also add some debug logs.
+
+```c
+// `printf` is part of the `stdio.h` header
+#include <stdio.h>
+#include "include/gdextension_interface.h"
+
+void initialize(void *userdata, GDExtensionInitializationLevel p_level) {
+    printf("initialize at level %d\n", p_level);
+}
+
+void deinitialize(void *userdata, GDExtensionInitializationLevel p_level) {
+    printf("deinitialize at level %d\n", p_level);
+}
+
+GDExtensionBool hello_extension_entry(
+    const GDExtensionInterface *p_interface,
+    GDExtensionClassLibraryPtr p_library,
+    GDExtensionInitialization *r_initialization
+) {
+    // setup the `initialize` function
+    r_initialization->initialize = &initialize;
+    // setup the `deinitialize` function
+    r_initialization->deinitialize = &deinitialize;
+    return 1;
+}
+```
+
+Recompile using `scons`, run Godot again and check out the output:
+
+```sh
+godot --upwards --headless --quit
+# initialize at level 0
+# Godot Engine v4.0.beta10.official.d0398f62f - https://godotengine.org
+# initialize at level 1
+# 
+# initialize at level 2
+# initialize at level 3
+# deinitialize at level 3
+# deinitialize at level 2
+# deinitialize at level 1
+# deinitialize at level 0
+```
+
+As we can see, Godot initializes and deinitializes our extension 4 times, one for each initialization level.
+The `GDExtensionInitializationLevel` enumeration lists the possible initialization levels Godot use:
+
+- `GDEXTENSION_INITIALIZATION_CORE`: happens right after the engine's core modules are initialized.
+- `GDEXTENSION_INITIALIZATION_SERVERS`: happens right after the engine's servers are initialized.
+- `GDEXTENSION_INITIALIZATION_SCENE`: happens right after the engine's runtime classes are registered.
+    Only then classes, including core ones like `Object`, `Reference` and `Node`, are in the ClassDB and may be extended.
+- `GDEXTENSION_INITIALIZATION_EDITOR`: happens only in the editor, right after editor classes are registered, like `EditorPlugin`.
+  Use this for editor-only code in extensions.
+
+We are responsible for checking the right initialization level and only run our code when appropriate.
+We can use conditional statements for that:
+
+```c
+#include <stdio.h>
+#include "include/gdextension_interface.h"
+
+void initialize(void *userdata, GDExtensionInitializationLevel p_level) {
+    // return early without printing if initialization level is not "Scene"
+    if (p_level != GDEXTENSION_INITIALIZATION_SCENE) {
+        return;
+    }
+
+    printf("initialize at level %d\n", p_level);
+}
+
+void deinitialize(void *userdata, GDExtensionInitializationLevel p_level) {
+    // return early without printing if initialization level is not "Scene"
+    if (p_level != GDEXTENSION_INITIALIZATION_SCENE) {
+        return;
+    }
+
+    printf("deinitialize at level %d\n", p_level);
+}
+
+GDExtensionBool hello_extension_entry(
+    const GDExtensionInterface *p_interface,
+    GDExtensionClassLibraryPtr p_library,
+    GDExtensionInitialization *r_initialization
+) {
+    r_initialization->initialize = &initialize;
+    r_initialization->deinitialize = &deinitialize;
+    return 1;
+}
+```
+
+Recompile and re-run Godot to see that only initialization level 2 ("Scene") is being processed:
+
+```sh
+godot --upwards --headless --quit
+# Godot Engine v4.0.beta10.official.d0398f62f - https://godotengine.org
+# 
+# initialize at level 2
+# deinitialize at level 2
+```
+
+All right, our library is now being initialized without crashes!
+
+
+## Using Godot utility functions
 TODO
