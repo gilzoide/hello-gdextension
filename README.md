@@ -3,7 +3,7 @@ This repository contains samples and experiments using Godot 4 + GDExtension
 
 
 ## Articles
-1. [Hello GDExtension](1.hello-c/README.md)
+1. [Hello GDExtension from C: an in-depth introduction](1.hello-c/README.md)
 
 
 ## Running the samples
