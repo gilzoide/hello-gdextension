@@ -139,7 +139,7 @@ godot --upwards --headless --quit
 I didn't promise the editor wouldn't crash, only that our library would be loaded.
 Our extension still needs to define the `r_initialization->initialize` and `deinitialize` functions.
 
-Current directory:
+Current and final directory:
 
 ```
 .
@@ -273,7 +273,7 @@ This also makes writing extensions by hand quite cumbersome.
 GDExtensions is designed for code generation, that's why the `extension_api.json` file exists: so bindings can be automatically generated for all classes and functions, including the ones added by custom forks.
 
 Calling `print` is simple enough without generating any code, so we'll use the raw GDExtensions API for now.
-This will also help us understand how GDExtension works behind the scenes.
+This will help us understand how GDExtension works behind the scenes.
 
 To call the implementation of `print`, we need to fetch it first by using `variant_get_ptr_utility_function`.
 Its arguments are a [StringName](https://docs.godotengine.org/en/latest/classes/class_stringname.html) with the function name, in this case "print", and an integer with the utility function's hash.
@@ -283,7 +283,7 @@ The hash can be found in the `extension_api.json` file and for `print` the value
 ## Creating a `StringName`
 First of all, let's get to the job of creating the `StringName` "print".
 `StringName` is a version of the `String` type that is optimized to be used as unique identifiers.
-This technique of having unique instances of Strings is called "String Interning" and is used by several programming languages, like Java and Lua.
+This technique of having unique instances of Strings is called "String Interning" and is used by several systems, including programming languages like Java and Lua.
 More information on Godot's `StringName` can be found in its [documentation page](https://docs.godotengine.org/en/latest/classes/class_stringname.html).
 
 Looking at the `gdextension_interface.h` header file, there are only functions for creating `String` types from C strings.
@@ -629,7 +629,7 @@ Recompile, open the project and run any scene from the Godot editor and you'll s
 
 ## Conclusion
 The GDExtension API is very powerful and flexible, letting custom native code add new classes to Godot without having to recompile the engine.
-On the other hand, it is really succint and requires a lot of boilerplate code for actually accessing built in types and classes, this part being well suited for automatic code generation.
+On the other hand, it is really succint and requires a lot of boilerplate code for actually accessing built-in classes and utility functions, this part being well suited for automatic code generation.
 
 In the next post we'll take a look at creating an extension in C++ using the [godot-cpp](https://github.com/godotengine/godot-cpp) bindings, which handles all the boilerplate and lets us go directly to implementing functionality.
 See you then!
