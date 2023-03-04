@@ -623,6 +623,13 @@ GDExtensionBool hello_extension_entry(
 }
 ```
 
+And that's it!
+Recompile, open the project and run any scene from the Godot editor and you'll see the message "Hello GDExtension from C!" on the Output tab.
+
 
 ## Conclusion
-TODO
+The GDExtension API is very powerful and flexible, letting custom native code add new classes to Godot without having to recompile the engine.
+On the other hand, it is really succint and requires a lot of boilerplate code for actually accessing built in types and classes, this part being well suited for automatic code generation.
+
+In the next post we'll take a look at creating an extension in C++ using the [godot-cpp](https://github.com/godotengine/godot-cpp) bindings, which handles all the boilerplate and lets us go directly to implementing functionality.
+See you then!
