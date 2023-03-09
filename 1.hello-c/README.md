@@ -1,4 +1,4 @@
-# Hello GDExtension
+# Hello GDExtension from C: an in-depth introduction
 In this first interaction with the GDExtension API, we'll create a "Hello World" extension that prints a static message when it gets loaded.
 
 To get to know GDExtension in depth, we'll be using the raw API in plain C.

@@ -4,6 +4,7 @@ This repository contains samples and experiments using Godot 4 + GDExtension
 
 ## Articles
 1. [Hello GDExtension from C: an in-depth introduction](1.hello-c/README.md)
+2. [Hello godot-cpp: creating classes in C++](2.hello-cpp/README.md)
 
 
 ## Running the samples
