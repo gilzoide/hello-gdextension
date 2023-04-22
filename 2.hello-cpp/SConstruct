@@ -1,0 +1,29 @@
+#!/usr/bin/env python
+
+# Using godot-cpp's SConstruct environment is the easiest way to integrate it
+env = SConscript("godot-cpp/SConstruct")
+
+# Cloning the environment before changing it avoids recompiling godot-cpp
+env = env.Clone()
+
+# Add support for generating compilation database files
+env.Tool("compilation_db")
+compiledb = env.CompilationDatabase("compile_commands.json")
+env.Alias("compiledb", compiledb)
+
+# Build GDExtension
+sources = ["hello-godot-cpp.cpp"]
+if env["platform"] == "macos":
+    library = env.SharedLibrary(
+        "libhello-godot-cpp.{}.{}.framework/libhello-godot-cpp.{}.{}".format(
+            env["platform"], env["target"], env["platform"], env["target"]
+        ),
+        source=sources,
+    )
+else:
+    library = env.SharedLibrary(
+        "libhello-godot-cpp{}{}".format(env["suffix"], env["SHLIBSUFFIX"]),
+        source=sources,
+    )
+
+Default(library)
