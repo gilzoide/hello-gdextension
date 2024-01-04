@@ -4,6 +4,8 @@ In this first interaction with the GDExtension API, we'll create a "Hello World"
 To get to know GDExtension in depth, we'll be using the raw API in plain C.
 In a later sample we'll use C++ with the [godot-cpp](https://github.com/godotengine/godot-cpp) bindings, which should provide much better usability.
 
+> Note: this tutorial only works on Godot 4.1 and newer
+
 
 ## Generating GDExtension API files
 First thing we need to do is either download the `gdextension_interface.h` and `extension_api.json` files from the [godot-headers](https://github.com/godotengine/godot-headers) repository, or generate them using the Godot editor.
@@ -15,7 +17,7 @@ To keep things organized, let's first create a new folder for them called `inclu
 mkdir include
 ```
 
-Assuming Godot 4 is available in your system's `PATH` as `godot`, run the following inside our newly created `include` directory:
+Assuming Godot 4 is available in your system's `PATH` as `godot`, run the following inside our newly created `include` directory to generate the files:
 
 ```sh
 godot --dump-extension-api --dump-gdextension-interface --headless
@@ -105,7 +107,7 @@ Let's define our own `hello.gdextension` file:
 ```ini
 [configuration]
 entry_symbol = "hello_extension_entry"
-compatibility_minimum = "4.2"
+compatibility_minimum = "4.1"
 
 [libraries]
 linux.x86_64 = "libhello-gdextensions.so"
@@ -202,7 +204,7 @@ godot --upwards --headless --quit
 ```
 
 As we can see, Godot initializes and deinitializes our extension 4 times, one for each initialization level.
-The `GDExtensionInitializationLevel` enumeration lists the possible initialization levels Godot use:
+The `GDExtensionInitializationLevel` enumeration lists the possible initialization levels that Godot uses:
 
 - `GDEXTENSION_INITIALIZATION_CORE`: happens right after the engine's core modules are initialized.
 - `GDEXTENSION_INITIALIZATION_SERVERS`: happens right after the engine's servers are initialized.
@@ -288,37 +290,28 @@ More information on Godot's `StringName` can be found in its [documentation page
 Looking at the `gdextension_interface.h` header file, there are only functions for creating `String` types from C strings.
 One of the `StringName`'s constructor accepts a `String` as input, so we'll need to first create a `String`, then construct a `StringName` from it.
 
-> Notice that if we use `godot-cpp` or any other bindings, this will all have been taken care of and we would be able to just construct a `StringName` directly from C/C++ data.
+> Note: if we use `godot-cpp` or any other bindings, this will all have been taken care of and we would be able to just construct a `StringName` directly from C/C++ data.
 > The next articles will use them, so we won't need such boilerplate code then.
 
-> Godot 4.2 added new interface functions, such as `string_name_new_with_latin1_chars`, for creating `StringName`s directly from C strings.
+> Note: Godot 4.2 added interface functions for creating `StringName`s directly from C strings, such as `string_name_new_with_latin1_chars`.
 
-As well as utility functions, built-in type constructors, destructors and methods must be fetched at runtime using the `GDExtensionInterface`.
-So the first thing we'll do is fetch the constructors and destructors for `String` and `StringName`.
-To make the implementation simpler, let's also store a global reference to the `GDExtensionInterface` received in `hello_extension_entry`.
+As well as utility functions, all built-in type constructors, destructors and methods must be fetched at runtime using the GDExtension interface functions.
+So the first thing we'll do is fetch the interface functions we'll need, then use them to fetch constructors and destructors for `String` and `StringName`.
 
-Let's open up `hello-gdextension.c` and fetch them constructors and destructors at our `initialize` function:
+Let's open up `hello-gdextension.c` and fetch the needed extension interface functions using `p_get_proc_address` in our entry point:
 ```c
 #include <stdio.h>
 #include "include/gdextension_interface.h"
 
-// GDExtensions interface pointer
-const GDExtensionInterface *interface;
-// Godot API function pointers
-static GDExtensionPtrConstructor construct_StringName_from_String;
-static GDExtensionPtrDestructor destroy_String;
-static GDExtensionPtrDestructor destroy_StringName;
+// GDExtension API function pointers
+static GDExtensionInterfaceStringNewWithUtf8Chars string_new_with_utf8_chars;
+static GDExtensionInterfaceVariantGetPtrConstructor variant_get_ptr_constructor;
+static GDExtensionInterfaceVariantGetPtrDestructor variant_get_ptr_destructor;
 
 void initialize(void *userdata, GDExtensionInitializationLevel p_level) {
     if (p_level != GDEXTENSION_INITIALIZATION_SCENE) {
         return;
     }
-
-    // StringName constructor at index 2 is the one that receives String
-    // You can find this information in `extension_api.json` file
-    construct_StringName_from_String = interface->variant_get_ptr_constructor(GDEXTENSION_VARIANT_TYPE_STRING_NAME, 2);
-    destroy_String = interface->variant_get_ptr_destructor(GDEXTENSION_VARIANT_TYPE_STRING);
-    destroy_StringName = interface->variant_get_ptr_destructor(GDEXTENSION_VARIANT_TYPE_STRING_NAME);
 
     printf("initialize at level %d\n", p_level);
 }
@@ -338,8 +331,61 @@ GDExtensionBool hello_extension_entry(
 ) {
     r_initialization->initialize = &initialize;
     r_initialization->deinitialize = &deinitialize;
-    // save the GDExtensionInterface globally
-    interface = p_interface;
+    // fetch the GDExtension interface function pointers
+    string_new_with_utf8_chars = (GDExtensionInterfaceStringNewWithUtf8Chars) p_get_proc_address("string_new_with_utf8_chars");
+    variant_get_ptr_constructor = (GDExtensionInterfaceVariantGetPtrConstructor) p_get_proc_address("variant_get_ptr_constructor");
+    variant_get_ptr_destructor = (GDExtensionInterfaceVariantGetPtrDestructor) p_get_proc_address("variant_get_ptr_destructor");
+    return 1;
+}
+```
+
+Now we fetch the constructors and destructors at our `initialize` function:
+```c
+#include <stdio.h>
+#include "include/gdextension_interface.h"
+
+// GDExtension interface function pointers
+static GDExtensionInterfaceStringNewWithUtf8Chars string_new_with_utf8_chars;
+static GDExtensionInterfaceVariantGetPtrConstructor variant_get_ptr_constructor;
+static GDExtensionInterfaceVariantGetPtrDestructor variant_get_ptr_destructor;
+// Godot API function pointers
+static GDExtensionPtrConstructor construct_StringName_from_String;
+static GDExtensionPtrDestructor destroy_String;
+static GDExtensionPtrDestructor destroy_StringName;
+
+void initialize(void *userdata, GDExtensionInitializationLevel p_level) {
+    if (p_level != GDEXTENSION_INITIALIZATION_SCENE) {
+        return;
+    }
+
+    // StringName constructor at index 2 is the one that receives String
+    // You can find this information in `extension_api.json` file
+    construct_StringName_from_String = variant_get_ptr_constructor(GDEXTENSION_VARIANT_TYPE_STRING_NAME, 2);
+    destroy_String = variant_get_ptr_destructor(GDEXTENSION_VARIANT_TYPE_STRING);
+    destroy_StringName = variant_get_ptr_destructor(GDEXTENSION_VARIANT_TYPE_STRING_NAME);
+
+    printf("initialize at level %d\n", p_level);
+}
+
+void deinitialize(void *userdata, GDExtensionInitializationLevel p_level) {
+    if (p_level != GDEXTENSION_INITIALIZATION_SCENE) {
+        return;
+    }
+
+    printf("deinitialize at level %d\n", p_level);
+}
+
+GDExtensionBool hello_extension_entry(
+    GDExtensionInterfaceGetProcAddress p_get_proc_address,
+    GDExtensionClassLibraryPtr p_library,
+    GDExtensionInitialization *r_initialization
+) {
+    r_initialization->initialize = &initialize;
+    r_initialization->deinitialize = &deinitialize;
+    // fetch the GDExtension interface function pointers
+    string_new_with_utf8_chars = (GDExtensionInterfaceStringNewWithUtf8Chars) p_get_proc_address("string_new_with_utf8_chars");
+    variant_get_ptr_constructor = (GDExtensionInterfaceVariantGetPtrConstructor) p_get_proc_address("variant_get_ptr_constructor");
+    variant_get_ptr_destructor = (GDExtensionInterfaceVariantGetPtrDestructor) p_get_proc_address("variant_get_ptr_destructor");
     return 1;
 }
 ```
@@ -361,7 +407,7 @@ typedef struct {
 StringName construct_StringName_from_cstring(const char *text) {
     // 1. Construct a String from the C string
     String string;
-    interface->string_new_with_latin1_chars(&string, text);
+    string_new_with_utf8_chars(&string, text);
 
     // 2. Construct a StringName from the String
     StringName string_name;
@@ -392,8 +438,10 @@ typedef struct {
     uint8_t godot_data_dont_touch_this[sizeof(void *)];
 } StringName;
 
-// GDExtensions interface pointer
-const GDExtensionInterface *interface;
+// GDExtension interface function pointers
+static GDExtensionInterfaceStringNewWithUtf8Chars string_new_with_utf8_chars;
+static GDExtensionInterfaceVariantGetPtrConstructor variant_get_ptr_constructor;
+static GDExtensionInterfaceVariantGetPtrDestructor variant_get_ptr_destructor;
 // Godot API function pointers
 static GDExtensionPtrConstructor construct_StringName_from_String;
 static GDExtensionPtrDestructor destroy_String;
@@ -405,7 +453,7 @@ static StringName print_StringName;
 StringName construct_StringName_from_cstring(const char *text) {
     // 1. Construct a String from the C string
     String string;
-    interface->string_new_with_latin1_chars(&string, text);
+    string_new_with_utf8_chars(&string, text);
 
     // 2. Construct a StringName from the String
     StringName string_name;
@@ -425,9 +473,9 @@ void initialize(void *userdata, GDExtensionInitializationLevel p_level) {
 
     // StringName constructor at index 2 is the one that receives String
     // You can find this information in `extension_api.json` file
-    construct_StringName_from_String = interface->variant_get_ptr_constructor(GDEXTENSION_VARIANT_TYPE_STRING_NAME, 2);
-    destroy_String = interface->variant_get_ptr_destructor(GDEXTENSION_VARIANT_TYPE_STRING);
-    destroy_StringName = interface->variant_get_ptr_destructor(GDEXTENSION_VARIANT_TYPE_STRING_NAME);
+    construct_StringName_from_String = variant_get_ptr_constructor(GDEXTENSION_VARIANT_TYPE_STRING_NAME, 2);
+    destroy_String = variant_get_ptr_destructor(GDEXTENSION_VARIANT_TYPE_STRING);
+    destroy_StringName = variant_get_ptr_destructor(GDEXTENSION_VARIANT_TYPE_STRING_NAME);
 
     // Initialize "print" StringName
     print_StringName = construct_StringName_from_cstring("print");
@@ -453,23 +501,48 @@ GDExtensionBool hello_extension_entry(
 ) {
     r_initialization->initialize = &initialize;
     r_initialization->deinitialize = &deinitialize;
-    // save the GDExtensionInterface globally
-    interface = p_interface;
+    string_new_with_utf8_chars = (GDExtensionInterfaceStringNewWithUtf8Chars) p_get_proc_address("string_new_with_utf8_chars");
+    variant_get_ptr_constructor = (GDExtensionInterfaceVariantGetPtrConstructor) p_get_proc_address("variant_get_ptr_constructor");
+    variant_get_ptr_destructor = (GDExtensionInterfaceVariantGetPtrDestructor) p_get_proc_address("variant_get_ptr_destructor");
     return 1;
 }
 ```
 
 
 ## Calling `print`
-Now that we have the "print" `StringName`, all that's left to do is fetch the `print` function implementation and call it.
-We'll declare the global `print` function pointer:
+Now that we have the "print" `StringName`, all that's left to do is fetch the `print` function implementation and call it. 
+
+Before we dive into it, let's fetch some additional GDExtension interface function pointers:
+```c
+// GDExtension interface function pointers
+// ...
+static GDExtensionInterfaceGetVariantFromTypeConstructor get_variant_from_type_constructor;
+static GDExtensionInterfaceVariantGetPtrUtilityFunction variant_get_ptr_utility_function;
+static GDExtensionInterfaceVariantDestroy variant_destroy;
+
+// ...
+
+GDExtensionBool hello_extension_entry(
+    GDExtensionInterfaceGetProcAddress p_get_proc_address,
+    GDExtensionClassLibraryPtr p_library,
+    GDExtensionInitialization *r_initialization
+) {
+    // ...
+    get_variant_from_type_constructor = (GDExtensionInterfaceGetVariantFromTypeConstructor) p_get_proc_address("get_variant_from_type_constructor");
+    variant_get_ptr_utility_function = (GDExtensionInterfaceVariantGetPtrUtilityFunction) p_get_proc_address("variant_get_ptr_utility_function");
+    variant_destroy = (GDExtensionInterfaceVariantDestroy) p_get_proc_address("variant_destroy");
+    return 1;
+}
+```
+
+Now we declare the global `print` function pointer:
 ```c
 static GDExtensionPtrUtilityFunction print_function;
 ```
 
 And fetch it using the "print" `StringName` and the integer hash we already found in `extension_api.json`:
 ```c
-print_function = interface->variant_get_ptr_utility_function(&print_StringName, 2648703342);
+print_function = variant_get_ptr_utility_function(&print_StringName, 2648703342);
 ```
 
 To call `print_function`, we'll first need to convert every passed parameter to a `Variant`.
@@ -482,7 +555,7 @@ static GDExtensionVariantFromTypeConstructorFunc construct_Variant_from_String;
 
 Then fetch it in `initialize`:
 ```c
-construct_Variant_from_String = interface->get_variant_from_type_constructor(GDEXTENSION_VARIANT_TYPE_STRING);
+construct_Variant_from_String = get_variant_from_type_constructor(GDEXTENSION_VARIANT_TYPE_STRING);
 ```
 
 Let's also create a struct definition for `Variant`s.
@@ -498,7 +571,7 @@ Now let's create our own wrapper for the utility "print" function that accepts a
 void print(const char *text) {
     // 1. Construct a String from the C string
     String string;
-    interface->string_new_with_utf8_chars(&string, text);
+    string_new_with_utf8_chars(&string, text);
 
     // 2. Construct a Variant from the String
     Variant arg1;
@@ -510,7 +583,7 @@ void print(const char *text) {
     print_function(NULL, args, 1);
 
     // 4. Clean up resources that are no longer needed
-    interface->variant_destroy(&arg1);
+    variant_destroy(&arg1);
     destroy_String(&string);
 }
 ```
@@ -532,8 +605,13 @@ typedef struct {
     uint8_t godot_data_dont_touch_this[24];
 } Variant;
 
-// GDExtensions interface pointer
-const GDExtensionInterface *interface;
+// GDExtension interface function pointers
+static GDExtensionInterfaceStringNewWithUtf8Chars string_new_with_utf8_chars;
+static GDExtensionInterfaceVariantGetPtrConstructor variant_get_ptr_constructor;
+static GDExtensionInterfaceVariantGetPtrDestructor variant_get_ptr_destructor;
+static GDExtensionInterfaceGetVariantFromTypeConstructor get_variant_from_type_constructor;
+static GDExtensionInterfaceVariantGetPtrUtilityFunction variant_get_ptr_utility_function;
+static GDExtensionInterfaceVariantDestroy variant_destroy;
 // Godot API function pointers
 static GDExtensionPtrConstructor construct_StringName_from_String;
 static GDExtensionVariantFromTypeConstructorFunc construct_Variant_from_String;
@@ -548,7 +626,7 @@ static GDExtensionPtrUtilityFunction print_function;
 StringName construct_StringName_from_cstring(const char *text) {
     // 1. Construct a String from the C string
     String string;
-    interface->string_new_with_latin1_chars(&string, text);
+    string_new_with_utf8_chars(&string, text);
 
     // 2. Construct a StringName from the String
     StringName string_name;
@@ -564,7 +642,7 @@ StringName construct_StringName_from_cstring(const char *text) {
 void print(const char *text) {
     // 1. Construct a String from the C string
     String string;
-    interface->string_new_with_utf8_chars(&string, text);
+    string_new_with_utf8_chars(&string, text);
 
     // 2. Construct a Variant from the String
     Variant arg1;
@@ -576,7 +654,7 @@ void print(const char *text) {
     print_function(NULL, args, 1);
 
     // 4. Clean up resources that are no longer needed
-    interface->variant_destroy(&arg1);
+    variant_destroy(&arg1);
     destroy_String(&string);
 }
 
@@ -587,15 +665,15 @@ void initialize(void *userdata, GDExtensionInitializationLevel p_level) {
 
     // StringName constructor at index 2 is the one that receives String
     // You can find this information in `extension_api.json` file
-    construct_StringName_from_String = interface->variant_get_ptr_constructor(GDEXTENSION_VARIANT_TYPE_STRING_NAME, 2);
-    construct_Variant_from_String = interface->get_variant_from_type_constructor(GDEXTENSION_VARIANT_TYPE_STRING);
-    destroy_String = interface->variant_get_ptr_destructor(GDEXTENSION_VARIANT_TYPE_STRING);
-    destroy_StringName = interface->variant_get_ptr_destructor(GDEXTENSION_VARIANT_TYPE_STRING_NAME);
+    construct_StringName_from_String = variant_get_ptr_constructor(GDEXTENSION_VARIANT_TYPE_STRING_NAME, 2);
+    construct_Variant_from_String = get_variant_from_type_constructor(GDEXTENSION_VARIANT_TYPE_STRING);
+    destroy_String = variant_get_ptr_destructor(GDEXTENSION_VARIANT_TYPE_STRING);
+    destroy_StringName = variant_get_ptr_destructor(GDEXTENSION_VARIANT_TYPE_STRING_NAME);
 
     // Initialize "print" StringName
     print_StringName = construct_StringName_from_cstring("print");
     // then fetch the "print" function pointer
-    print_function = interface->variant_get_ptr_utility_function(&print_StringName, 2648703342);
+    print_function = variant_get_ptr_utility_function(&print_StringName, 2648703342);
 
     print("Hello GDExtension from C!");
 }
@@ -618,8 +696,13 @@ GDExtensionBool hello_extension_entry(
 ) {
     r_initialization->initialize = &initialize;
     r_initialization->deinitialize = &deinitialize;
-    // save the GDExtensionInterface globally
-    interface = p_interface;
+    // save the GDExtension API function pointers globally
+    string_new_with_utf8_chars = (GDExtensionInterfaceStringNewWithUtf8Chars) p_get_proc_address("string_new_with_utf8_chars");
+    variant_get_ptr_constructor = (GDExtensionInterfaceVariantGetPtrConstructor) p_get_proc_address("variant_get_ptr_constructor");
+    variant_get_ptr_destructor = (GDExtensionInterfaceVariantGetPtrDestructor) p_get_proc_address("variant_get_ptr_destructor");
+    get_variant_from_type_constructor = (GDExtensionInterfaceGetVariantFromTypeConstructor) p_get_proc_address("get_variant_from_type_constructor");
+    variant_get_ptr_utility_function = (GDExtensionInterfaceVariantGetPtrUtilityFunction) p_get_proc_address("variant_get_ptr_utility_function");
+    variant_destroy = (GDExtensionInterfaceVariantDestroy) p_get_proc_address("variant_destroy");
     return 1;
 }
 ```

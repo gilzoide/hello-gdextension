@@ -12,7 +12,7 @@ typedef struct {
     uint8_t godot_data_dont_touch_this[24];
 } Variant;
 
-// GDExtension interface function pointers
+// GDExtensions interface pointer
 static GDExtensionInterfaceStringNewWithUtf8Chars string_new_with_utf8_chars;
 static GDExtensionInterfaceVariantGetPtrConstructor variant_get_ptr_constructor;
 static GDExtensionInterfaceVariantGetPtrDestructor variant_get_ptr_destructor;
@@ -27,7 +27,7 @@ static GDExtensionPtrDestructor destroy_StringName;
 
 // here is our global "print" StringName
 static StringName print_StringName;
-// and our global "print" function
+// and here is our global "print" function
 static GDExtensionPtrUtilityFunction print_function;
 
 StringName construct_StringName_from_cstring(const char *text) {
@@ -89,11 +89,11 @@ void deinitialize(void *userdata, GDExtensionInitializationLevel p_level) {
     if (p_level != GDEXTENSION_INITIALIZATION_SCENE) {
         return;
     }
-    
-    // Destroy "print" StringName
-    destroy_StringName(&print_StringName);
 
     print("Goodbye GDExtension from C!");
+
+    // Destroy "print" StringName
+    destroy_StringName(&print_StringName);
 }
 
 GDExtensionBool hello_extension_entry(
@@ -105,9 +105,9 @@ GDExtensionBool hello_extension_entry(
     r_initialization->deinitialize = &deinitialize;
     // save the GDExtension API function pointers globally
     string_new_with_utf8_chars = (GDExtensionInterfaceStringNewWithUtf8Chars) p_get_proc_address("string_new_with_utf8_chars");
-    get_variant_from_type_constructor = (GDExtensionInterfaceGetVariantFromTypeConstructor) p_get_proc_address("get_variant_from_type_constructor");
     variant_get_ptr_constructor = (GDExtensionInterfaceVariantGetPtrConstructor) p_get_proc_address("variant_get_ptr_constructor");
     variant_get_ptr_destructor = (GDExtensionInterfaceVariantGetPtrDestructor) p_get_proc_address("variant_get_ptr_destructor");
+    get_variant_from_type_constructor = (GDExtensionInterfaceGetVariantFromTypeConstructor) p_get_proc_address("get_variant_from_type_constructor");
     variant_get_ptr_utility_function = (GDExtensionInterfaceVariantGetPtrUtilityFunction) p_get_proc_address("variant_get_ptr_utility_function");
     variant_destroy = (GDExtensionInterfaceVariantDestroy) p_get_proc_address("variant_destroy");
     return 1;
