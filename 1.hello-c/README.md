@@ -122,13 +122,13 @@ I've added a sample project file with an empty scene in the root of this reposit
 
 ```sh
 godot --upwards --headless --quit
-# ERROR: Parameter "initialization.initialize" is null.
-#    at: initialize_library (core/extension/gdextension.cpp:788)
-# Godot Engine v4.2.1.stable.official.b09f793f5 - https://godotengine.org
+# ERROR: Condition "initialization.initialize == nullptr" is true.
+#    at: initialize_library (core/extension/gdextension.cpp:503)
+# Godot Engine v4.1.2.stable.official.399c9dc39 - https://godotengine.org
 # ...
 # ================================================================
 # handle_crash: Program crashed with signal 11
-# Engine version: Godot Engine v4.2.1.stable.official (b09f793f564a6c95dc76acc654b390e68441bd01)
+# Engine version: Godot Engine v4.1.2.stable.official (399c9dc393f6f84c0b4e4d4117906c70c048ecf2)
 # Dumping the backtrace. Please include this when reporting the bug on: https://github.com/godotengine/godot/issues
 # [1] /usr/lib/libc.so.6 ...
 # -- END OF BACKTRACE --
@@ -190,7 +190,7 @@ Recompile using `scons`, run Godot again and check out the output:
 ```sh
 godot --upwards --headless --quit
 # initialize at level 0
-# Godot Engine v4.2.1.stable.official.b09f793f5 - https://godotengine.org
+# Godot Engine v4.1.2.stable.official.399c9dc39 - https://godotengine.org
 # initialize at level 1
 # 
 # initialize at level 2
@@ -251,7 +251,7 @@ Recompile and re-run Godot to see that only initialization level 2 ("Scene") is 
 
 ```sh
 godot --upwards --headless --quit
-# Godot Engine v4.2.1.stable.official.b09f793f5 - https://godotengine.org
+# Godot Engine v4.1.2.stable.official.399c9dc39 - https://godotengine.org
 # 
 # initialize at level 2
 # deinitialize at level 2
@@ -265,7 +265,7 @@ If you run the project from the Godot Editor, you'll see that `printf` output is
 It does not appear in the editor's Output tab.
 Let's fix that by calling Godot's built-in `print` utility function, the same one we use in GDScript code.
 
-If you take a good look at the `gdextension_interface.h` header file, you'll see `print_warning`, `print_error` and `print_script_error` functions, but no plain `print` function.
+If you take a good look at the `gdextension_interface.h` header file, you'll see `print_error`, `print_warning`, `print_script_error`, but no plain `print` function.
 In fact, the GDExtension API is really succinct, requiring us to fetch pretty much every built-in functionality at runtime.
 This makes it really slim and dynamic, so that people building their own forks of Godot can use their own additional classes/functions in extensions in the same way as built-in ones.
 This also makes writing extensions by hand quite cumbersome.
@@ -290,6 +290,8 @@ One of the `StringName`'s constructor accepts a `String` as input, so we'll need
 
 > Notice that if we use `godot-cpp` or any other bindings, this will all have been taken care of and we would be able to just construct a `StringName` directly from C/C++ data.
 > The next articles will use them, so we won't need such boilerplate code then.
+
+> Godot 4.2 added new interface functions, such as `string_name_new_with_latin1_chars`, for creating `StringName`s directly from C strings.
 
 As well as utility functions, built-in type constructors, destructors and methods must be fetched at runtime using the `GDExtensionInterface`.
 So the first thing we'll do is fetch the constructors and destructors for `String` and `StringName`.
