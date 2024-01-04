@@ -12,11 +12,11 @@ typedef struct {
     uint8_t godot_data_dont_touch_this[24];
 } Variant;
 
-// GDExtension API function pointers
+// GDExtension interface function pointers
 static GDExtensionInterfaceStringNewWithUtf8Chars string_new_with_utf8_chars;
-static GDExtensionInterfaceGetVariantFromTypeConstructor get_variant_from_type_constructor;
 static GDExtensionInterfaceVariantGetPtrConstructor variant_get_ptr_constructor;
 static GDExtensionInterfaceVariantGetPtrDestructor variant_get_ptr_destructor;
+static GDExtensionInterfaceGetVariantFromTypeConstructor get_variant_from_type_constructor;
 static GDExtensionInterfaceVariantGetPtrUtilityFunction variant_get_ptr_utility_function;
 static GDExtensionInterfaceVariantDestroy variant_destroy;
 // Godot API function pointers
@@ -25,7 +25,9 @@ static GDExtensionVariantFromTypeConstructorFunc construct_Variant_from_String;
 static GDExtensionPtrDestructor destroy_String;
 static GDExtensionPtrDestructor destroy_StringName;
 
-// Here is our global "print" function
+// here is our global "print" StringName
+static StringName print_StringName;
+// and our global "print" function
 static GDExtensionPtrUtilityFunction print_function;
 
 StringName construct_StringName_from_cstring(const char *text) {
@@ -76,11 +78,9 @@ void initialize(void *userdata, GDExtensionInitializationLevel p_level) {
     destroy_StringName = variant_get_ptr_destructor(GDEXTENSION_VARIANT_TYPE_STRING_NAME);
 
     // Initialize "print" StringName
-    StringName print_StringName = construct_StringName_from_cstring("print");
+    print_StringName = construct_StringName_from_cstring("print");
     // then fetch the "print" function pointer
     print_function = variant_get_ptr_utility_function(&print_StringName, 2648703342);
-    // Release the "print" StringName, since we don't need it anymore
-    destroy_StringName(&print_StringName);
 
     print("Hello GDExtension from C!");
 }
@@ -89,6 +89,9 @@ void deinitialize(void *userdata, GDExtensionInitializationLevel p_level) {
     if (p_level != GDEXTENSION_INITIALIZATION_SCENE) {
         return;
     }
+    
+    // Destroy "print" StringName
+    destroy_StringName(&print_StringName);
 
     print("Goodbye GDExtension from C!");
 }
