@@ -1,5 +1,6 @@
 [configuration]
 entry_symbol = "hello_extension_entry"
+compatibility_minimum = "4.2"
 
 [libraries]
 linux.x86_64 = "libhello-gdextension.so"
