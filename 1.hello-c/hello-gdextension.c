@@ -12,7 +12,7 @@ typedef struct {
     uint8_t godot_data_dont_touch_this[24];
 } Variant;
 
-// GDExtensions interface pointer
+// GDExtension interface function pointers
 static GDExtensionInterfaceStringNewWithUtf8Chars string_new_with_utf8_chars;
 static GDExtensionInterfaceVariantGetPtrConstructor variant_get_ptr_constructor;
 static GDExtensionInterfaceVariantGetPtrDestructor variant_get_ptr_destructor;
