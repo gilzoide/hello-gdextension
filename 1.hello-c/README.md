@@ -110,9 +110,9 @@ entry_symbol = "hello_extension_entry"
 compatibility_minimum = "4.1"
 
 [libraries]
-linux.x86_64 = "libhello-gdextensions.so"
-windows.x86_64 = "hello-gdextensions.dll"
-macos = "libhello-gdextensions.dylib"
+linux.x86_64 = "libhello-gdextension.so"
+windows.x86_64 = "hello-gdextension.dll"
+macos = "libhello-gdextension.dylib"
 ```
 
 If we eventually add support for other platforms, like Android or iOS, or CPU architectures, like `x86` or `arm64`, we need to add more entries to this file.
